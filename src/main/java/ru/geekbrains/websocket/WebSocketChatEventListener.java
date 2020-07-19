@@ -9,14 +9,22 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
+import ru.geekbrains.service.UserService;
 
 @Component
 public class WebSocketChatEventListener {
 
     private static final Logger logger = LoggerFactory.getLogger(WebSocketChatEventListener.class);
 
+    private final SimpMessageSendingOperations messagingTemplate;
+
+    private final UserService userService;
+
     @Autowired
-    private SimpMessageSendingOperations messagingTemplate;
+    public WebSocketChatEventListener(SimpMessageSendingOperations messagingTemplate, UserService userService) {
+        this.messagingTemplate = messagingTemplate;
+        this.userService = userService;
+    }
 
     @EventListener
     public void handleWebSocketConnectListener(SessionConnectedEvent event) {
@@ -26,12 +34,13 @@ public class WebSocketChatEventListener {
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        String username = (String) headerAccessor.getSessionAttributes().get("username");
+        String username = headerAccessor.getUser().getName();
         if(username != null) {
             ChatMessage chatMessage = new ChatMessage();
             chatMessage.setType("Leave");
             chatMessage.setSenderName(username);
             messagingTemplate.convertAndSend("/topic/status", chatMessage);
+            userService.setUserOffline(username);
         }
     }
 }

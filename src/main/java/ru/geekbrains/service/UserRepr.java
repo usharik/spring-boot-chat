@@ -41,4 +41,9 @@ public class UserRepr {
     public void setOnline(Boolean online) {
         isOnline = online;
     }
+
+    public UserRepr withOnline(Boolean online) {
+        isOnline = online;
+        return this;
+    }
 }

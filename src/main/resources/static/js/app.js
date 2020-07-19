@@ -2,7 +2,7 @@ let ChatApp = angular.module('ChatApp', []);
 let activeUser = null;
 let currentUser = null;
 
-ChatApp.controller('UserListController', function ($scope, $http) {
+ChatApp.controller('UserListController', function ($scope, $rootScope, $http) {
 
     $scope.setSelected = function(user) {
         $scope.activeUser = user;
@@ -28,9 +28,20 @@ ChatApp.controller('UserListController', function ($scope, $http) {
                 console.error(resp);
             });
 
+    $rootScope.$on('newUser', function(event, username) {
+        $scope.userList.find(usr => usr.username === username).online = true;
+        $scope.$apply();
+        console.info(username + " is online now")
+    })
+
+    $rootScope.$on('Leave', function(event, username) {
+        $scope.userList.find(usr => usr.username === username).online = false;
+        $scope.$apply();
+        console.info(username + " is offline now")
+    })
 })
 
-ChatApp.controller('ChatController', function ($scope, $http) {
+ChatApp.controller('ChatController', function ($scope, $rootScope) {
     const socket = new SockJS('/websocketApp');
     const stompClient = Stomp.over(socket);
     stompClient.connect({}, connectionSuccess);
@@ -39,7 +50,7 @@ ChatApp.controller('ChatController', function ($scope, $http) {
         stompClient.subscribe('/topic/status', onStatusMessageReceived);
         stompClient.subscribe('/user/queue/chat', onMessageReceived);
         stompClient.send("/app/chat.newUser", {}, JSON.stringify({
-            senderName : name,
+            senderName : currentUser.username,
             type : 'newUser'
         }))
     }
@@ -48,6 +59,12 @@ ChatApp.controller('ChatController', function ($scope, $http) {
     $scope.content = "";
 
     function onStatusMessageReceived(payload) {
+        const message = JSON.parse(payload.body);
+        if (message.type === 'newUser') {
+            $rootScope.$broadcast('newUser', message.senderName);
+        } else if (message.type === 'Leave') {
+            $rootScope.$broadcast('Leave', message.senderName);
+        }
         console.info("New status message " + payload);
     }
 

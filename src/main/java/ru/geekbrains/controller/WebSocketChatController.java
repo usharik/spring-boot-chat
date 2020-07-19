@@ -9,6 +9,7 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
+import ru.geekbrains.service.UserService;
 import ru.geekbrains.websocket.ChatMessage;
 
 @Controller
@@ -18,9 +19,12 @@ public class WebSocketChatController {
 
     private final SimpMessagingTemplate messagingTemplate;
 
+    private final UserService userService;
+
     @Autowired
-    public WebSocketChatController(SimpMessagingTemplate messagingTemplate) {
+    public WebSocketChatController(SimpMessagingTemplate messagingTemplate, UserService userService) {
         this.messagingTemplate = messagingTemplate;
+        this.userService = userService;
     }
 
     @MessageMapping("/chat.sendMessage")
@@ -39,9 +43,8 @@ public class WebSocketChatController {
 
     @MessageMapping("/chat.newUser")
     @SendTo("/topic/status")
-    public ChatMessage newUser(@Payload ChatMessage chatMessage,
-                               SimpMessageHeaderAccessor headerAccessor) {
-        headerAccessor.getSessionAttributes().put("username", chatMessage.getSenderName());
+    public ChatMessage newUser(@Payload ChatMessage chatMessage) {
+        userService.setUserOnline(chatMessage.getSenderName());
         return chatMessage;
     }
 }
